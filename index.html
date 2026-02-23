@@ -1,0 +1,591 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>SEPAL</title>
+  <style>
+    :root{
+      --bg:#f6f7f9;
+      --card:#ffffff;
+      --border:#e5e7eb;
+      --text:#111827;
+      --muted:#6b7280;
+      --shadow: 0 10px 30px rgba(0,0,0,.06);
+    }
+    body {
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+    }
+
+    /* Centered page container */
+    .wrap{
+      max-width: 1100px;
+      margin: 28px auto;
+      padding: 0 16px;
+    }
+
+    /* Overall card */
+    .shell{
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      box-shadow: var(--shadow);
+      padding: 18px;
+    }
+
+    header{
+      display:flex;
+      align-items:flex-end;
+      justify-content:space-between;
+      gap: 14px;
+      padding: 6px 6px 14px 6px;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 14px;
+    }
+    h1{ margin:0; font-size: 20px; letter-spacing: .2px; }
+    .meta{ text-align:right; }
+    .meta #status{ font-weight: 600; }
+    .small{ font-size: 12px; color: var(--muted); }
+    .err{ color: #b00020; }
+
+    /* Expand all button */
+    .expand-all-btn{
+      margin-top: 6px;
+      padding: 6px 12px;
+      font-size: 12px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: #fff;
+      cursor: pointer;
+      transition: 0.15s ease;
+    }
+    .expand-all-btn:hover { background: #f3f4f6; }
+
+    /* Cabinet stack */
+    .cabinet {
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: 0 2px 10px rgba(0,0,0,.04);
+      background: #fff;
+    }
+    .layer {
+      border-top: 1px solid var(--border);
+      background: white;
+    }
+    .layer:first-child { border-top: none; }
+
+    .layer button {
+      width: 100%;
+      text-align: left;
+      background: transparent;
+      border: none;
+      padding: 14px 16px;
+      cursor: pointer;
+      display: grid;
+      grid-template-columns: 120px 1fr auto;
+      gap: 12px;
+      align-items: center;
+    }
+    .layer button:hover { background: #fafafa; }
+
+    .layer-title { font-weight: 700; }
+
+    .vals {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(140px, 1fr));
+      gap: 10px;
+      align-items: center;
+    }
+
+    .pill {
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      padding: 6px 10px;
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      font-variant-numeric: tabular-nums;
+      background: #fff;
+    }
+    .pill .k { color: var(--muted); }
+    .pill .v { color: var(--text); font-weight: 600; }
+
+    .chev {
+      color: var(--muted);
+      font-size: 12px;
+      user-select: none;
+      white-space: nowrap;
+    }
+
+    .details {
+      display: none;
+      padding: 0 16px 16px 16px;
+    }
+    .layer.expanded .details { display: block; }
+
+    .chart-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 12px;
+      margin-top: 10px;
+    }
+    @media (min-width: 900px) {
+      .chart-grid { grid-template-columns: 1fr 1fr 1fr; }
+    }
+    .chart-card {
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 10px;
+      background: #fff;
+    }
+    .chart-card h3 {
+      margin: 0 0 8px 0;
+      font-size: 13px;
+      color: #374151;
+      font-weight: 700;
+      letter-spacing: .2px;
+    }
+    canvas {
+      width: 100%;
+      height: 170px;
+      display: block;
+    }
+
+    details.debug { margin-top: 14px; }
+    pre {
+      background: #f7f7f7; border: 1px solid var(--border);
+      padding: 10px; border-radius: 10px; overflow:auto;
+      max-height: 260px;
+      font-size: 12px;
+    }
+    code { background: #f2f2f2; padding: 2px 4px; border-radius: 6px; }
+
+    @media (max-width: 720px){
+      header{ align-items:flex-start; flex-direction:column; }
+      .meta{ text-align:left; }
+      .layer button{ grid-template-columns: 1fr; }
+      .vals{ grid-template-columns: 1fr; }
+      .chev{ justify-self:start; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="shell">
+      <header>
+        <div>
+          <h1>SEPAL - Sebastian's Plant Alert 🌱 </h1>
+          <div class="small">Click a layer to expand/collapse • Auto-refresh every 30s</div>
+        </div>
+        <div class="meta">
+          <div id="status">Loading…</div>
+          <button id="toggleAllBtn" class="expand-all-btn">Expand all</button>
+        </div>
+      </header>
+
+      <div class="cabinet" id="cabinet"></div>
+
+      <details class="debug">
+        <summary class="small">Debug</summary>
+        <pre id="debug">Waiting…</pre>
+      </details>
+    </div>
+  </div>
+
+  <script>
+    const DATA_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRRw7CacfMewqTsK6rZL4HDzgCjaIGFO1PgaiSClaNDofw9uI4ssa-I0nKuS79FmwWF-pYqkOYh1Wui/pub?gid=0&single=true&output=csv";
+
+    const REFRESH_MS = 30_000;
+    const HISTORY_POINTS = 180;
+
+    function parseCSV(text) {
+      const rows = [];
+      let row = [];
+      let field = "";
+      let inQuotes = false;
+
+      text = text.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+
+      for (let i = 0; i < text.length; i++) {
+        const c = text[i];
+
+        if (inQuotes) {
+          if (c === '"') {
+            if (text[i + 1] === '"') { field += '"'; i++; }
+            else inQuotes = false;
+          } else field += c;
+        } else {
+          if (c === '"') inQuotes = true;
+          else if (c === ",") { row.push(field); field = ""; }
+          else if (c === "\n") {
+            row.push(field); field = "";
+            if (!(row.length === 1 && row[0] === "")) rows.push(row);
+            row = [];
+          } else field += c;
+        }
+      }
+      row.push(field);
+      if (!(row.length === 1 && row[0] === "")) rows.push(row);
+      return rows;
+    }
+
+    function normalizeHeader(h) {
+      return String(h ?? "").trim().replace(/\s+/g, "");
+    }
+
+    function toObjects(table) {
+      if (!table || table.length < 2) return [];
+      const header = table[0].map(normalizeHeader);
+      const out = [];
+      for (let i = 1; i < table.length; i++) {
+        const r = table[i];
+        if (!r || r.every(x => String(x ?? "").trim() === "")) continue;
+        const obj = {};
+        for (let j = 0; j < header.length; j++) obj[header[j]] = (r[j] ?? "").trim();
+        out.push(obj);
+      }
+      return out;
+    }
+
+    function numOrNull(x) {
+      const s0 = String(x ?? "").trim();
+      if (!s0) return null;
+      const s = (s0.includes(",") && !s0.includes(".")) ? s0.replace(",", ".") : s0;
+      const v = Number(s);
+      return Number.isFinite(v) ? v : null;
+    }
+
+    function fmt(v, unit) {
+      if (v === null) return "—";
+      const digits = unit === "lx" ? 0 : 1;
+      return `${v.toFixed(digits)} ${unit}`;
+    }
+
+    function formatTime24(ts) {
+      if (!ts) return "";
+      const d = new Date(ts);
+      if (isNaN(d)) return "";
+      return d.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit", hour12: false });
+    }
+
+    function formatDateTimeDE(ts) {
+      if (!ts) return "";
+      const d = new Date(ts);
+      if (isNaN(d)) return "";
+
+      const day   = String(d.getDate()).padStart(2, "0");
+      const month = String(d.getMonth() + 1).padStart(2, "0");
+      const year  = d.getFullYear();
+
+      const hours   = String(d.getHours()).padStart(2, "0");
+      const minutes = String(d.getMinutes()).padStart(2, "0");
+
+      return `${day}.${month}.${year} ${hours}:${minutes}`;
+    }
+
+    function drawLineChart(canvas, xs, ys, yAxisLabel, yTickDigits) {
+      const ctx = canvas.getContext("2d");
+      const dpr = devicePixelRatio || 1;
+
+      const width = canvas.clientWidth;
+      const height = canvas.clientHeight;
+      canvas.width = Math.floor(width * dpr);
+      canvas.height = Math.floor(height * dpr);
+
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.clearRect(0, 0, width, height);
+
+      // Layout (room for labels)
+      const padL = 62;
+      const padR = 18;
+      const padT = 18;
+      const padB = 44;
+
+      const plotW = width - padL - padR;
+      const plotH = height - padT - padB;
+
+      const valid = ys.map((y, i) => ({ i, y })).filter(p => p.y !== null);
+      if (valid.length < 2) {
+        ctx.fillStyle = "#666";
+        ctx.font = "12px system-ui";
+        ctx.fillText("Not enough data", padL, padT + 20);
+        return;
+      }
+
+      let yMin = Math.min(...valid.map(p => p.y));
+      let yMax = Math.max(...valid.map(p => p.y));
+      if (yMin === yMax) { yMin -= 1; yMax += 1; }
+      const yMargin = (yMax - yMin) * 0.08;
+      yMin -= yMargin; yMax += yMargin;
+
+      const xToPx = idx => padL + (idx / (ys.length - 1)) * plotW;
+      const yToPx = v => padT + (1 - (v - yMin) / (yMax - yMin)) * plotH;
+
+      // Grid (4 lines)
+      ctx.strokeStyle = "#eee";
+      ctx.lineWidth = 1;
+      for (let k = 0; k <= 4; k++) {
+        const y = padT + (k / 4) * plotH;
+        ctx.beginPath();
+        ctx.moveTo(padL, y);
+        ctx.lineTo(padL + plotW, y);
+        ctx.stroke();
+      }
+
+      ctx.strokeStyle = "#444";
+      ctx.lineWidth = 1.2;
+
+      ctx.beginPath(); // y axis
+      ctx.moveTo(padL, padT);
+      ctx.lineTo(padL, padT + plotH);
+      ctx.stroke();
+
+      ctx.beginPath(); // x axis
+      ctx.moveTo(padL, padT + plotH);
+      ctx.lineTo(padL + plotW, padT + plotH);
+      ctx.stroke();
+
+      // tick labels
+      ctx.fillStyle = "#444";
+      ctx.font = "11px system-ui";
+
+      ctx.textAlign = "right";
+      ctx.textBaseline = "middle";
+      ctx.fillText(yMax.toFixed(yTickDigits), padL - 6, padT + 8);
+      ctx.fillText(yMin.toFixed(yTickDigits), padL - 6, padT + plotH);
+
+      ctx.textBaseline = "alphabetic";
+      ctx.textAlign = "left";
+      ctx.fillText(formatTime24(xs[0]), padL, padT + plotH + 18);
+
+      ctx.textAlign = "right";
+      ctx.fillText(formatTime24(xs[xs.length - 1]), padL + plotW, padT + plotH + 18);
+
+      // Axis labels
+      ctx.fillStyle = "#555";
+      ctx.font = "11px system-ui";
+
+      // Y axis label (rotated)
+      ctx.save();
+      ctx.translate(16, padT + plotH / 2);
+      ctx.rotate(-Math.PI / 2);
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(yAxisLabel, 0, 0);
+      ctx.restore();
+
+      // X axis label
+      ctx.textAlign = "center";
+      ctx.textBaseline = "alphabetic";
+      ctx.fillText("Time (24h)", padL + plotW / 2, height - 8);
+
+      // Data line
+      ctx.strokeStyle = "#111";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+
+      let started = false;
+      for (let i = 0; i < ys.length; i++) {
+        const v = ys[i];
+        if (v === null) { started = false; continue; }
+        const px = xToPx(i);
+        const py = yToPx(v);
+        if (!started) { ctx.moveTo(px, py); started = true; }
+        else ctx.lineTo(px, py);
+      }
+      ctx.stroke();
+    }
+
+ // UI
+    function layerValuePills(latest, i) {
+      const t = numOrNull(latest[`temp_${i}`]);
+      const h = numOrNull(latest[`humidity_${i}`]);
+      const lx = numOrNull(latest[`lux_${i}`]);
+      return `
+        <div class="vals">
+          <div class="pill"><span class="k">Temp</span><span class="v">${fmt(t, "°C")}</span></div>
+          <div class="pill"><span class="k">Humidity</span><span class="v">${fmt(h, "%")}</span></div>
+          <div class="pill"><span class="k">Light</span><span class="v">${fmt(lx, "lx")}</span></div>
+        </div>
+      `;
+    }
+
+    function buildHistory(objs) {
+      const slice = objs.slice(Math.max(0, objs.length - HISTORY_POINTS));
+      const historyByLayer = {};
+      for (let layer = 1; layer <= 5; layer++) {
+        historyByLayer[layer] = {
+          ts: slice.map(o => o.ts ?? o.ts_utc ?? ""),
+          temp: slice.map(o => numOrNull(o[`temp_${layer}`])),
+          hum:  slice.map(o => numOrNull(o[`humidity_${layer}`])),
+          lux:  slice.map(o => numOrNull(o[`lux_${layer}`])),
+        };
+      }
+      return historyByLayer;
+    }
+
+    function isExpanded(layer) {
+      return window.__expandedLayers && window.__expandedLayers.has(layer);
+    }
+
+    function setExpanded(layer, expanded) {
+      if (!window.__expandedLayers) window.__expandedLayers = new Set();
+      if (expanded) window.__expandedLayers.add(layer);
+      else window.__expandedLayers.delete(layer);
+    }
+
+    function updateToggleAllButtonLabel() {
+      const btn = document.getElementById("toggleAllBtn");
+      if (!btn) return;
+      const n = window.__expandedLayers ? window.__expandedLayers.size : 0;
+      btn.textContent = (n === 5) ? "Collapse all" : "Expand all";
+    }
+
+    function renderCabinet(latest, historyByLayer) {
+      const cab = document.getElementById("cabinet");
+      const order = [5,4,3,2,1]; // top -> bottom 
+
+      cab.innerHTML = order.map(i => {
+        const expanded = isExpanded(i);
+        return `
+          <div class="layer ${expanded ? "expanded" : ""}" data-layer="${i}">
+            <button type="button" aria-expanded="${expanded}">
+              <div>
+                <div class="layer-title">Layer ${i}</div>
+              </div>
+              ${layerValuePills(latest, i)}
+              <div class="chev">${expanded ? "▲ collapse" : "▼ expand"}</div>
+            </button>
+
+            <div class="details">
+              <div class="small">History (last ${HISTORY_POINTS} points)</div>
+              <div class="chart-grid">
+                <div class="chart-card">
+                  <h3>Temperature</h3>
+                  <canvas id="c-temp-${i}"></canvas>
+                </div>
+                <div class="chart-card">
+                  <h3>Humidity</h3>
+                  <canvas id="c-hum-${i}"></canvas>
+                </div>
+                <div class="chart-card">
+                  <h3>Light</h3>
+                  <canvas id="c-lux-${i}"></canvas>
+                </div>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join("");
+
+      // individual toggles
+      cab.querySelectorAll(".layer button").forEach(btn => {
+        btn.addEventListener("click", () => {
+          const layer = Number(btn.parentElement.getAttribute("data-layer"));
+          setExpanded(layer, !isExpanded(layer));
+          renderCabinet(window.__latest, window.__historyByLayer);
+        });
+      });
+
+      // draw charts for all layers
+      for (const layer of (window.__expandedLayers || [])) {
+        drawCharts(layer);
+      }
+
+      updateToggleAllButtonLabel();
+
+      function drawCharts(layer) {
+        const hist = historyByLayer[layer];
+        if (!hist) return;
+
+        const cT = document.getElementById(`c-temp-${layer}`);
+        const cH = document.getElementById(`c-hum-${layer}`);
+        const cL = document.getElementById(`c-lux-${layer}`);
+        if (!cT || !cH || !cL) return;
+
+        drawLineChart(cT, hist.ts, hist.temp, "°C", 1);
+        drawLineChart(cH, hist.ts, hist.hum, "%", 1);
+        drawLineChart(cL, hist.ts, hist.lux, "lx", 0);
+      }
+    }
+
+    async function loadOnce() {
+      const statusEl = document.getElementById("status");
+      const debugEl = document.getElementById("debug");
+
+      try {
+        statusEl.textContent = "Loading…";
+        statusEl.classList.remove("err");
+
+        const res = await fetch(DATA_URL, { cache: "no-store" });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const text = await res.text();
+
+        const table = parseCSV(text);
+        const objs = toObjects(table);
+        if (!objs.length) throw new Error("No data rows parsed from CSV.");
+
+        const latest = objs[objs.length - 1];
+        const ts = latest.ts || latest.ts_utc || latest.timestamp || "";
+
+        // check rq cols
+        const required = ["temp_1","humidity_1","lux_1","temp_5","humidity_5","lux_5"];
+        const missing = required.filter(k => !(k in latest));
+        if (missing.length) throw new Error("CSV header missing expected columns: " + missing.join(", "));
+
+        const historyByLayer = buildHistory(objs);
+
+        window.__latest = latest;
+        window.__historyByLayer = historyByLayer;
+        if (!window.__expandedLayers) window.__expandedLayers = new Set(); 
+        renderCabinet(latest, historyByLayer);
+
+        statusEl.textContent = ts
+          ? `Last update: ${formatDateTimeDE(ts)}`
+          : "Last update: (no ts column)";
+
+        debugEl.textContent =
+          `Rows parsed: ${objs.length}\n` +
+          `Latest ts: ${ts}\n` +
+          `Local time (24h): ${formatTime24(ts)}\n` +
+          `Expanded layers: ${[...(window.__expandedLayers||[])].sort((a,b)=>a-b).join(", ") || "(none)"}\n` +
+          `Example: temp_1=${latest.temp_1}, hum_1=${latest.humidity_1}, lux_1=${latest.lux_1}\n`;
+
+      } catch (e) {
+        statusEl.textContent = `Error: ${e.message}`;
+        statusEl.classList.add("err");
+      }
+    }
+
+    // Expand all / Collapse all button
+    document.getElementById("toggleAllBtn").addEventListener("click", () => {
+      if (!window.__expandedLayers) window.__expandedLayers = new Set();
+
+      if (window.__expandedLayers.size === 5) {
+        window.__expandedLayers.clear();
+      } else {
+        window.__expandedLayers = new Set([1,2,3,4,5]);
+      }
+
+      if (window.__latest && window.__historyByLayer) {
+        renderCabinet(window.__latest, window.__historyByLayer);
+      } else {
+        updateToggleAllButtonLabel();
+      }
+    });
+
+    loadOnce();
+    setInterval(loadOnce, REFRESH_MS);
+
+    window.addEventListener("resize", () => {
+      if (window.__latest && window.__historyByLayer) {
+        renderCabinet(window.__latest, window.__historyByLayer);
+      }
+    });
+  </script>
+</body>
+</html>
