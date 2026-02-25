@@ -155,14 +155,72 @@
       display: block;
     }
 
-    details.debug { margin-top: 14px; }
-    pre {
-      background: #f7f7f7; border: 1px solid var(--border);
-      padding: 10px; border-radius: 10px; overflow:auto;
-      max-height: 260px;
-      font-size: 12px;
+    /* Light switch events card */
+    .events-card{
+      margin-top: 14px;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 12px;
+      background: #fff;
     }
-    code { background: #f2f2f2; padding: 2px 4px; border-radius: 6px; }
+    .events-head{
+      display:flex;
+      justify-content:space-between;
+      align-items:baseline;
+      gap: 12px;
+      margin-bottom: 10px;
+    }
+    .events-title{
+      font-weight: 800;
+      letter-spacing: .2px;
+    }
+    .events-grid{
+      display:grid;
+      grid-template-columns: 1fr;
+      gap: 10px;
+    }
+    @media (min-width: 900px){
+      .events-grid{ grid-template-columns: 1fr 1fr; }
+    }
+    .events-layer{
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 10px;
+    }
+    .events-layer h3{
+      margin: 0 0 8px 0;
+      font-size: 13px;
+      color: #374151;
+      font-weight: 800;
+    }
+    .events-row{
+      display:flex;
+      justify-content:space-between;
+      gap: 10px;
+      font-size: 12px;
+      padding: 4px 0;
+      border-top: 1px dashed #eee;
+    }
+
+    .events-toggle{
+      width: 100%;
+      text-align: left;
+      background: transparent;
+      border: none;
+      padding: 0;
+      cursor: pointer;
+      display:flex;
+      justify-content:space-between;
+      align-items:baseline;
+      gap: 12px;
+    }
+.events-body{ display:none; }
+.events-card.expanded .events-body{ display:block; }
+    .events-row:first-of-type{ border-top: none; }
+    .events-tag{ font-weight: 800; }
+    .events-tag.on{ color: #0f766e; }
+    .events-tag.off{ color: #b45309; }
+    .events-when{ color: var(--muted); font-variant-numeric: tabular-nums; }
 
     @media (max-width: 720px){
       header{ align-items:flex-start; flex-direction:column; }
@@ -170,6 +228,7 @@
       .layer button{ grid-template-columns: 1fr; }
       .vals{ grid-template-columns: 1fr; }
       .chev{ justify-self:start; }
+      .events-head{ flex-direction:column; align-items:flex-start; }
     }
   </style>
 </head>
@@ -178,8 +237,8 @@
     <div class="shell">
       <header>
         <div>
-          <h1>SEPAL - Sebastian's Plant Alert 🌱 </h1>
-          <div class="small">Click a layer to expand/collapse • Auto-refresh every 30s</div>
+          <h1>SEPAL - Sebastian's Plant Alert 🌱</h1>
+          <div class="small">Click a layer to expand/collapse • Auto-refresh every 5 min</div>
         </div>
         <div class="meta">
           <div id="status">Loading…</div>
@@ -189,17 +248,25 @@
 
       <div class="cabinet" id="cabinet"></div>
 
-      <details class="debug">
-        <summary class="small">Debug</summary>
-        <pre id="debug">Waiting…</pre>
-      </details>
+    <div class="events-card" id="eventsCard">
+      <button type="button" class="events-toggle" id="eventsToggle" aria-expanded="false">
+        <div>
+          <div class="events-title">Latest light switch events 💡</div>
+          <div class="small">When did the lights switch on and off?</div>
+        </div>
+        <div class="chev" id="eventsChev">▼ expand</div>
+      </button>
+
+      <div class="events-body" id="eventsBody">
+        <div id="events">Loading…</div>
+      </div>
     </div>
   </div>
 
   <script>
     const DATA_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRRw7CacfMewqTsK6rZL4HDzgCjaIGFO1PgaiSClaNDofw9uI4ssa-I0nKuS79FmwWF-pYqkOYh1Wui/pub?gid=0&single=true&output=csv";
 
-    const REFRESH_MS = 30_000;
+    const REFRESH_MS = 300000;
     const HISTORY_POINTS = 180;
 
     function parseCSV(text) {
@@ -299,7 +366,6 @@
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       ctx.clearRect(0, 0, width, height);
 
-      // Layout (room for labels)
       const padL = 62;
       const padR = 18;
       const padT = 18;
@@ -325,7 +391,6 @@
       const xToPx = idx => padL + (idx / (ys.length - 1)) * plotW;
       const yToPx = v => padT + (1 - (v - yMin) / (yMax - yMin)) * plotH;
 
-      // Grid (4 lines)
       ctx.strokeStyle = "#eee";
       ctx.lineWidth = 1;
       for (let k = 0; k <= 4; k++) {
@@ -400,7 +465,7 @@
       ctx.stroke();
     }
 
- // UI
+    // UI
     function layerValuePills(latest, i) {
       const t = numOrNull(latest[`temp_${i}`]);
       const h = numOrNull(latest[`humidity_${i}`]);
@@ -445,9 +510,197 @@
       btn.textContent = (n === 5) ? "Collapse all" : "Expand all";
     }
 
+    (function initEventsToggle(){
+      const card = document.getElementById("eventsCard");
+      const btn  = document.getElementById("eventsToggle");
+      const chev = document.getElementById("eventsChev");
+      if (!card || !btn || !chev) return;
+
+      function setEventsExpanded(expanded){
+        card.classList.toggle("expanded", expanded);
+        btn.setAttribute("aria-expanded", expanded ? "true" : "false");
+        chev.textContent = expanded ? "▲ collapse" : "▼ expand";
+      }
+
+      // start collapsed
+      setEventsExpanded(false);
+
+      btn.addEventListener("click", () => {
+        const expanded = card.classList.contains("expanded");
+        setEventsExpanded(!expanded);
+      });
+    })();
+
+    // Light event detection 
+
+    function parseTsValue(ts) {
+      const d = new Date(ts);
+      return isNaN(d) ? null : d;
+    }
+
+    function movingAvg3(arr) {
+      const out = new Array(arr.length).fill(null);
+      for (let i = 0; i < arr.length; i++) {
+        const a = arr[i-1], b = arr[i], c = arr[i+1];
+        const vals = [a,b,c].filter(v => v !== null && Number.isFinite(v));
+        out[i] = vals.length ? (vals.reduce((s,v)=>s+v,0)/vals.length) : null;
+      }
+      return out;
+    }
+
+    function clamp(x, a, b){ return Math.max(a, Math.min(b, x)); }
+
+function quantile(sortedArr, q) {
+  if (!sortedArr.length) return null;
+  const pos = (sortedArr.length - 1) * q;
+  const base = Math.floor(pos);
+  const rest = pos - base;
+  if (sortedArr[base + 1] === undefined) return sortedArr[base];
+  return sortedArr[base] + rest * (sortedArr[base + 1] - sortedArr[base]);
+}
+
+
+  function detectLightEvents(objs, {
+    days = 3,
+    maxEventsPerType = 3,
+    cooldownMinutes = 60,   
+    qHigh = 0.85,           
+    fullOnFrac = 0.6       
+  } = {}) {
+
+    const now = new Date();
+    const cutoff = new Date(now.getTime() - days * 24 * 60 * 60 * 1000);
+    const cooldownMs = cooldownMinutes * 60 * 1000;
+
+    const seriesByLayer = {};
+    for (let layer = 1; layer <= 5; layer++)
+      seriesByLayer[layer] = { t: [], lux: [] };
+
+    for (const o of objs) {
+      const ts = o.ts ?? o.ts_utc ?? o.timestamp ?? "";
+      const d = new Date(ts);
+      if (isNaN(d) || d < cutoff) continue;
+
+      for (let layer = 1; layer <= 5; layer++) {
+        seriesByLayer[layer].t.push(ts);
+        seriesByLayer[layer].lux.push(numOrNull(o[`lux_${layer}`]));
+      }
+    }
+
+    const out = {};
+
+    for (let layer = 1; layer <= 5; layer++) {
+
+      const t = seriesByLayer[layer].t;
+      const lux = movingAvg3(seriesByLayer[layer].lux);
+
+      const vals = lux
+        .filter(v => v !== null && Number.isFinite(v))
+        .slice()
+        .sort((a,b)=>a-b);
+
+      if (vals.length < 10) {
+        out[layer] = { lastOn: [], lastOff: [] };
+        continue;
+      }
+
+      const luxHigh = quantile(vals, qHigh);
+      const fullOnThreshold = luxHigh * fullOnFrac;
+
+      let state = (lux[0] >= fullOnThreshold) ? "FULL_ON" : "NOT_FULL_ON";
+      let lastEventTime = null;
+      const events = [];
+
+      for (let i = 1; i < lux.length; i++) {
+        const prev = lux[i-1];
+        const curr = lux[i];
+        if (prev === null || curr === null) continue;
+
+        const ti = new Date(t[i]);
+        if (isNaN(ti)) continue;
+
+        if (lastEventTime && (ti - lastEventTime) < cooldownMs)
+          continue;
+
+        // entering FULL ON
+        if (state === "NOT_FULL_ON" &&
+            prev < fullOnThreshold &&
+            curr >= fullOnThreshold) {
+
+          events.push({ type: "ON", ts: t[i] });
+          state = "FULL_ON";
+          lastEventTime = ti;
+          continue;
+        }
+
+        // leaving FULL ON
+        if (state === "FULL_ON" &&
+            prev >= fullOnThreshold &&
+            curr < fullOnThreshold) {
+
+          events.push({ type: "OFF", ts: t[i] });
+          state = "NOT_FULL_ON";
+          lastEventTime = ti;
+          continue;
+        }
+      }
+
+      const lastOn  = events.filter(e => e.type === "ON")
+                            .slice(-maxEventsPerType)
+                            .reverse();
+
+      const lastOff = events.filter(e => e.type === "OFF")
+                            .slice(-maxEventsPerType)
+                            .reverse();
+
+      out[layer] = { lastOn, lastOff };
+    }
+
+    return out;
+  }
+
+    function renderLightEventsHTML(eventsByLayer) {
+      const order = [5,4,3,2,1];
+      return `
+        <div class="events-grid">
+          ${order.map(layer => {
+            const e = eventsByLayer[layer];
+            const ons = e?.lastOn ?? [];
+            const offs = e?.lastOff ?? [];
+            const rows = [];
+
+            for (const x of ons) {
+              rows.push(`
+                <div class="events-row">
+                  <div class="events-tag on">ON</div>
+                  <div class="events-when">${formatDateTimeDE(x.ts)}</div>
+                </div>
+              `);
+            }
+            for (const x of offs) {
+              rows.push(`
+                <div class="events-row">
+                  <div class="events-tag off">OFF</div>
+                  <div class="events-when">${formatDateTimeDE(x.ts)}</div>
+                </div>
+              `);
+            }
+
+            return `
+              <div class="events-layer">
+                <h3>Layer ${layer}</h3>
+                ${rows.length ? rows.join("") : `<div class="small">No ON/OFF events detected in the last 3 days.</div>`}
+              </div>
+            `;
+          }).join("")}
+        </div>
+      `;
+    }
+
+
     function renderCabinet(latest, historyByLayer) {
       const cab = document.getElementById("cabinet");
-      const order = [5,4,3,2,1]; // top -> bottom 
+      const order = [5,4,3,2,1]; // top -> bottom
 
       cab.innerHTML = order.map(i => {
         const expanded = isExpanded(i);
@@ -491,10 +744,7 @@
         });
       });
 
-      // draw charts for all layers
-      for (const layer of (window.__expandedLayers || [])) {
-        drawCharts(layer);
-      }
+      for (const layer of (window.__expandedLayers || [])) drawCharts(layer);
 
       updateToggleAllButtonLabel();
 
@@ -515,11 +765,12 @@
 
     async function loadOnce() {
       const statusEl = document.getElementById("status");
-      const debugEl = document.getElementById("debug");
+      const eventsEl = document.getElementById("events");
 
       try {
         statusEl.textContent = "Loading…";
         statusEl.classList.remove("err");
+        if (eventsEl) eventsEl.textContent = "Loading…";
 
         const res = await fetch(DATA_URL, { cache: "no-store" });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -532,7 +783,6 @@
         const latest = objs[objs.length - 1];
         const ts = latest.ts || latest.ts_utc || latest.timestamp || "";
 
-        // check rq cols
         const required = ["temp_1","humidity_1","lux_1","temp_5","humidity_5","lux_5"];
         const missing = required.filter(k => !(k in latest));
         if (missing.length) throw new Error("CSV header missing expected columns: " + missing.join(", "));
@@ -541,23 +791,26 @@
 
         window.__latest = latest;
         window.__historyByLayer = historyByLayer;
-        if (!window.__expandedLayers) window.__expandedLayers = new Set(); 
+        if (!window.__expandedLayers) window.__expandedLayers = new Set();
         renderCabinet(latest, historyByLayer);
 
         statusEl.textContent = ts
           ? `Last update: ${formatDateTimeDE(ts)}`
           : "Last update: (no ts column)";
 
-        debugEl.textContent =
-          `Rows parsed: ${objs.length}\n` +
-          `Latest ts: ${ts}\n` +
-          `Local time (24h): ${formatTime24(ts)}\n` +
-          `Expanded layers: ${[...(window.__expandedLayers||[])].sort((a,b)=>a-b).join(", ") || "(none)"}\n` +
-          `Example: temp_1=${latest.temp_1}, hum_1=${latest.humidity_1}, lux_1=${latest.lux_1}\n`;
+        const eventsByLayer = detectLightEvents(objs, {
+          days: 3,
+          maxEventsPerType: 3,
+          offRatio: 0.5,  // OFF = -50%
+          onRatio: 1.8,   // ON  = +80%
+        });
+
+        if (eventsEl) eventsEl.innerHTML = renderLightEventsHTML(eventsByLayer);
 
       } catch (e) {
         statusEl.textContent = `Error: ${e.message}`;
         statusEl.classList.add("err");
+        if (eventsEl) eventsEl.textContent = "—";
       }
     }
 
