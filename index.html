@@ -12,6 +12,11 @@
       --text:#111827;
       --muted:#6b7280;
       --shadow: 0 10px 30px rgba(0,0,0,.06);
+
+      /* subtle “card tint” hues */
+      --tint-status: #f9fafb;
+      --tint-layers: #f8fafc;
+      --tint-events: #f9fafb;
     }
     body {
       font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
@@ -20,14 +25,12 @@
       color: var(--text);
     }
 
-    /* Centered page container */
     .wrap{
       max-width: 1100px;
       margin: 28px auto;
       padding: 0 16px;
     }
 
-    /* Overall card */
     .shell{
       background: var(--card);
       border: 1px solid var(--border);
@@ -51,9 +54,41 @@
     .small{ font-size: 12px; color: var(--muted); }
     .err{ color: #b00020; }
 
-    /* Expand all button */
+    /* General card wrapper (for the inner cards) */
+    .card{
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: 0 2px 10px rgba(0,0,0,.04);
+      background: #fff;
+      margin-top: 14px;
+    }
+
+    .card.pad { padding: 12px; overflow: visible; } /* if you want inner padding */
+    .card-tint-status{ background: var(--tint-status); }
+    .card-tint-layers{ background: var(--tint-layers); }
+    .card-tint-events{ background: var(--tint-events); }
+
+    /* mini header inside cards */
+    .card-head{
+      display:flex;
+      justify-content:space-between;
+      align-items:baseline;
+      gap: 12px;
+      padding: 12px;
+      border-bottom: 1px solid var(--border);
+      background: rgba(255,255,255,.55);
+      backdrop-filter: blur(2px);
+    }
+    .card-title{
+      font-weight: 900;
+      letter-spacing: .2px;
+      margin: 0;
+      font-size: 14px;
+    }
+
+    /* Expand all button (moved into layers card header) */
     .expand-all-btn{
-      margin-top: 6px;
       padding: 6px 12px;
       font-size: 12px;
       border-radius: 999px;
@@ -61,16 +96,16 @@
       background: #fff;
       cursor: pointer;
       transition: 0.15s ease;
+      white-space: nowrap;
     }
     .expand-all-btn:hover { background: #f3f4f6; }
 
     /* Cabinet stack */
     .cabinet {
-      border: 1px solid var(--border);
-      border-radius: 16px;
-      overflow: hidden;
-      box-shadow: 0 2px 10px rgba(0,0,0,.04);
+      border-top: 0;
       background: #fff;
+      border-radius: 0 0 16px 16px;
+      overflow: hidden;
     }
     .layer {
       border-top: 1px solid var(--border);
@@ -155,25 +190,48 @@
       display: block;
     }
 
-    /* Light switch events card */
-    .events-card{
-      margin-top: 14px;
-      border: 1px solid var(--border);
-      border-radius: 14px;
+    /* Status card content */
+    .status-body{
       padding: 12px;
-      background: #fff;
     }
-    .events-head{
+    .status-topline{
+      display:flex;
+      justify-content:space-between;
+      gap: 12px;
+      align-items:baseline;
+      margin-bottom: 8px;
+    }
+    .status-time{
+      font-variant-numeric: tabular-nums;
+      color: var(--muted);
+      font-size: 12px;
+      white-space: nowrap;
+    }
+    .status-text{
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 10px;
+      font-size: 13px;
+      line-height: 1.35;
+    }
+
+    /* Light switch events card */
+    .events-toggle{
+      width: 100%;
+      text-align: left;
+      background: transparent;
+      border: none;
+      padding: 0;
+      cursor: pointer;
       display:flex;
       justify-content:space-between;
       align-items:baseline;
       gap: 12px;
-      margin-bottom: 10px;
     }
-    .events-title{
-      font-weight: 800;
-      letter-spacing: .2px;
-    }
+    .events-body{ display:none; padding: 0 12px 12px 12px; }
+    .events-card.expanded .events-body{ display:block; }
+
     .events-grid{
       display:grid;
       grid-template-columns: 1fr;
@@ -186,6 +244,7 @@
       border: 1px solid var(--border);
       border-radius: 12px;
       padding: 10px;
+      background: #fff;
     }
     .events-layer h3{
       margin: 0 0 8px 0;
@@ -201,21 +260,6 @@
       padding: 4px 0;
       border-top: 1px dashed #eee;
     }
-
-    .events-toggle{
-      width: 100%;
-      text-align: left;
-      background: transparent;
-      border: none;
-      padding: 0;
-      cursor: pointer;
-      display:flex;
-      justify-content:space-between;
-      align-items:baseline;
-      gap: 12px;
-    }
-.events-body{ display:none; }
-.events-card.expanded .events-body{ display:block; }
     .events-row:first-of-type{ border-top: none; }
     .events-tag{ font-weight: 800; }
     .events-tag.on{ color: #0f766e; }
@@ -228,7 +272,7 @@
       .layer button{ grid-template-columns: 1fr; }
       .vals{ grid-template-columns: 1fr; }
       .chev{ justify-self:start; }
-      .events-head{ flex-direction:column; align-items:flex-start; }
+      .card-head{ flex-direction:column; align-items:flex-start; }
     }
   </style>
 </head>
@@ -242,29 +286,63 @@
         </div>
         <div class="meta">
           <div id="status">Loading…</div>
-          <button id="toggleAllBtn" class="expand-all-btn">Expand all</button>
         </div>
       </header>
 
-      <div class="cabinet" id="cabinet"></div>
-
-    <div class="events-card" id="eventsCard">
-      <button type="button" class="events-toggle" id="eventsToggle" aria-expanded="false">
-        <div>
-          <div class="events-title">Latest light switch events 💡</div>
-          <div class="small">When did the lights switch on and off?</div>
+      <!-- NEW: Latest status card (from "status" sheet) -->
+      <div class="card card-tint-status" id="statusCard">
+        <div class="card-head">
+          <div>
+            <div class="card-title">Latest sensor status</div>
+          </div>
+          <div class="status-time" id="aiStatusTime">—</div>
         </div>
-        <div class="chev" id="eventsChev">▼ expand</div>
-      </button>
-
-      <div class="events-body" id="eventsBody">
-        <div id="events">Loading…</div>
+        <div class="status-body">
+          <div class="status-text" id="aiStatusText">Loading…</div>
+        </div>
       </div>
+
+      <!-- Layers card (expand-all moved here) -->
+      <div class="card card-tint-layers">
+        <div class="card-head">
+          <div>
+            <div class="card-title">Layers</div>
+            <div class="small">Latest readings + history charts</div>
+          </div>
+          <button id="toggleAllBtn" class="expand-all-btn">Expand all</button>
+        </div>
+
+        <div class="cabinet" id="cabinet"></div>
+      </div>
+
+      <!-- Events card (kept, but tinted and clearly separated) -->
+      <div class="card card-tint-events events-card" id="eventsCard">
+        <div class="card-head">
+          <button type="button" class="events-toggle" id="eventsToggle" aria-expanded="false">
+            <div>
+              <div class="card-title">Latest light switch events 💡</div>
+              <div class="small">When did the lights switch on and off?</div>
+            </div>
+            <div class="chev" id="eventsChev">▼ expand</div>
+          </button>
+        </div>
+
+        <div class="events-body" id="eventsBody">
+          <div id="events">Loading…</div>
+        </div>
+      </div>
+
     </div>
   </div>
 
   <script>
+    // Existing data sheet (gid=0)
     const DATA_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRRw7CacfMewqTsK6rZL4HDzgCjaIGFO1PgaiSClaNDofw9uI4ssa-I0nKuS79FmwWF-pYqkOYh1Wui/pub?gid=0&single=true&output=csv";
+
+    // NEW: status sheet (replace STATUS_GID with the gid of your "status" tab)
+    // Find it by opening the tab and looking at the URL: ...gid=123456789
+    const STATUS_GID = "183875317";
+    const STATUS_URL = `https://docs.google.com/spreadsheets/d/e/2PACX-1vRRw7CacfMewqTsK6rZL4HDzgCjaIGFO1PgaiSClaNDofw9uI4ssa-I0nKuS79FmwWF-pYqkOYh1Wui/pub?gid=${STATUS_GID}&single=true&output=csv`;
 
     const REFRESH_MS = 300000;
     const HISTORY_POINTS = 180;
@@ -352,6 +430,14 @@
       const minutes = String(d.getMinutes()).padStart(2, "0");
 
       return `${day}.${month}.${year} ${hours}:${minutes}`;
+    }
+
+    // tiny markdown-ish bold support for **text**
+    function renderInlineBold(md) {
+      const s = String(md ?? "");
+      // escape basic HTML
+      const esc = s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+      return esc.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
     }
 
     function drawLineChart(canvas, xs, ys, yAxisLabel, yTickDigits) {
@@ -531,13 +617,7 @@
       });
     })();
 
-    // Light event detection 
-
-    function parseTsValue(ts) {
-      const d = new Date(ts);
-      return isNaN(d) ? null : d;
-    }
-
+    // Light event detection
     function movingAvg3(arr) {
       const out = new Array(arr.length).fill(null);
       for (let i = 0; i < arr.length; i++) {
@@ -548,116 +628,98 @@
       return out;
     }
 
-    function clamp(x, a, b){ return Math.max(a, Math.min(b, x)); }
+    function quantile(sortedArr, q) {
+      if (!sortedArr.length) return null;
+      const pos = (sortedArr.length - 1) * q;
+      const base = Math.floor(pos);
+      const rest = pos - base;
+      if (sortedArr[base + 1] === undefined) return sortedArr[base];
+      return sortedArr[base] + rest * (sortedArr[base + 1] - sortedArr[base]);
+    }
 
-function quantile(sortedArr, q) {
-  if (!sortedArr.length) return null;
-  const pos = (sortedArr.length - 1) * q;
-  const base = Math.floor(pos);
-  const rest = pos - base;
-  if (sortedArr[base + 1] === undefined) return sortedArr[base];
-  return sortedArr[base] + rest * (sortedArr[base + 1] - sortedArr[base]);
-}
+    function detectLightEvents(objs, {
+      days = 3,
+      maxEventsPerType = 3,
+      cooldownMinutes = 60,
+      qHigh = 0.85,
+      fullOnFrac = 0.6
+    } = {}) {
 
+      const now = new Date();
+      const cutoff = new Date(now.getTime() - days * 24 * 60 * 60 * 1000);
+      const cooldownMs = cooldownMinutes * 60 * 1000;
 
-  function detectLightEvents(objs, {
-    days = 3,
-    maxEventsPerType = 3,
-    cooldownMinutes = 60,   
-    qHigh = 0.85,           
-    fullOnFrac = 0.6       
-  } = {}) {
+      const seriesByLayer = {};
+      for (let layer = 1; layer <= 5; layer++)
+        seriesByLayer[layer] = { t: [], lux: [] };
 
-    const now = new Date();
-    const cutoff = new Date(now.getTime() - days * 24 * 60 * 60 * 1000);
-    const cooldownMs = cooldownMinutes * 60 * 1000;
+      for (const o of objs) {
+        const ts = o.ts ?? o.ts_utc ?? o.timestamp ?? "";
+        const d = new Date(ts);
+        if (isNaN(d) || d < cutoff) continue;
 
-    const seriesByLayer = {};
-    for (let layer = 1; layer <= 5; layer++)
-      seriesByLayer[layer] = { t: [], lux: [] };
+        for (let layer = 1; layer <= 5; layer++) {
+          seriesByLayer[layer].t.push(ts);
+          seriesByLayer[layer].lux.push(numOrNull(o[`lux_${layer}`]));
+        }
+      }
 
-    for (const o of objs) {
-      const ts = o.ts ?? o.ts_utc ?? o.timestamp ?? "";
-      const d = new Date(ts);
-      if (isNaN(d) || d < cutoff) continue;
+      const out = {};
 
       for (let layer = 1; layer <= 5; layer++) {
-        seriesByLayer[layer].t.push(ts);
-        seriesByLayer[layer].lux.push(numOrNull(o[`lux_${layer}`]));
-      }
-    }
+        const t = seriesByLayer[layer].t;
+        const lux = movingAvg3(seriesByLayer[layer].lux);
 
-    const out = {};
+        const vals = lux
+          .filter(v => v !== null && Number.isFinite(v))
+          .slice()
+          .sort((a,b)=>a-b);
 
-    for (let layer = 1; layer <= 5; layer++) {
-
-      const t = seriesByLayer[layer].t;
-      const lux = movingAvg3(seriesByLayer[layer].lux);
-
-      const vals = lux
-        .filter(v => v !== null && Number.isFinite(v))
-        .slice()
-        .sort((a,b)=>a-b);
-
-      if (vals.length < 10) {
-        out[layer] = { lastOn: [], lastOff: [] };
-        continue;
-      }
-
-      const luxHigh = quantile(vals, qHigh);
-      const fullOnThreshold = luxHigh * fullOnFrac;
-
-      let state = (lux[0] >= fullOnThreshold) ? "FULL_ON" : "NOT_FULL_ON";
-      let lastEventTime = null;
-      const events = [];
-
-      for (let i = 1; i < lux.length; i++) {
-        const prev = lux[i-1];
-        const curr = lux[i];
-        if (prev === null || curr === null) continue;
-
-        const ti = new Date(t[i]);
-        if (isNaN(ti)) continue;
-
-        if (lastEventTime && (ti - lastEventTime) < cooldownMs)
-          continue;
-
-        // entering FULL ON
-        if (state === "NOT_FULL_ON" &&
-            prev < fullOnThreshold &&
-            curr >= fullOnThreshold) {
-
-          events.push({ type: "ON", ts: t[i] });
-          state = "FULL_ON";
-          lastEventTime = ti;
+        if (vals.length < 10) {
+          out[layer] = { lastOn: [], lastOff: [] };
           continue;
         }
 
-        // leaving FULL ON
-        if (state === "FULL_ON" &&
-            prev >= fullOnThreshold &&
-            curr < fullOnThreshold) {
+        const luxHigh = quantile(vals, qHigh);
+        const fullOnThreshold = luxHigh * fullOnFrac;
 
-          events.push({ type: "OFF", ts: t[i] });
-          state = "NOT_FULL_ON";
-          lastEventTime = ti;
-          continue;
+        let state = (lux[0] >= fullOnThreshold) ? "FULL_ON" : "NOT_FULL_ON";
+        let lastEventTime = null;
+        const events = [];
+
+        for (let i = 1; i < lux.length; i++) {
+          const prev = lux[i-1];
+          const curr = lux[i];
+          if (prev === null || curr === null) continue;
+
+          const ti = new Date(t[i]);
+          if (isNaN(ti)) continue;
+
+          if (lastEventTime && (ti - lastEventTime) < cooldownMs) continue;
+
+          if (state === "NOT_FULL_ON" && prev < fullOnThreshold && curr >= fullOnThreshold) {
+            events.push({ type: "ON", ts: t[i] });
+            state = "FULL_ON";
+            lastEventTime = ti;
+            continue;
+          }
+
+          if (state === "FULL_ON" && prev >= fullOnThreshold && curr < fullOnThreshold) {
+            events.push({ type: "OFF", ts: t[i] });
+            state = "NOT_FULL_ON";
+            lastEventTime = ti;
+            continue;
+          }
         }
+
+        const lastOn  = events.filter(e => e.type === "ON").slice(-maxEventsPerType).reverse();
+        const lastOff = events.filter(e => e.type === "OFF").slice(-maxEventsPerType).reverse();
+
+        out[layer] = { lastOn, lastOff };
       }
 
-      const lastOn  = events.filter(e => e.type === "ON")
-                            .slice(-maxEventsPerType)
-                            .reverse();
-
-      const lastOff = events.filter(e => e.type === "OFF")
-                            .slice(-maxEventsPerType)
-                            .reverse();
-
-      out[layer] = { lastOn, lastOff };
+      return out;
     }
-
-    return out;
-  }
 
     function renderLightEventsHTML(eventsByLayer) {
       const order = [5,4,3,2,1];
@@ -697,10 +759,9 @@ function quantile(sortedArr, q) {
       `;
     }
 
-
     function renderCabinet(latest, historyByLayer) {
       const cab = document.getElementById("cabinet");
-      const order = [5,4,3,2,1]; // top -> bottom
+      const order = [5,4,3,2,1];
 
       cab.innerHTML = order.map(i => {
         const expanded = isExpanded(i);
@@ -735,7 +796,6 @@ function quantile(sortedArr, q) {
         `;
       }).join("");
 
-      // individual toggles
       cab.querySelectorAll(".layer button").forEach(btn => {
         btn.addEventListener("click", () => {
           const layer = Number(btn.parentElement.getAttribute("data-layer"));
@@ -760,6 +820,42 @@ function quantile(sortedArr, q) {
         drawLineChart(cT, hist.ts, hist.temp, "°C", 1);
         drawLineChart(cH, hist.ts, hist.hum, "%", 1);
         drawLineChart(cL, hist.ts, hist.lux, "lx", 0);
+      }
+    }
+
+    async function loadStatusSheet() {
+      const timeEl = document.getElementById("aiStatusTime");
+      const textEl = document.getElementById("aiStatusText");
+
+      if (!timeEl || !textEl) return;
+
+      try {
+        const res = await fetch(STATUS_URL, { cache: "no-store" });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const text = await res.text();
+
+        const table = parseCSV(text);
+        const objs = toObjects(table);
+        if (!objs.length) throw new Error("No rows in status sheet.");
+
+        const latest = objs[objs.length - 1];
+
+        // Expect columns: ts_utc, window_hours, ai_status
+        const ts = latest.ts_utc || latest.ts || latest.timestamp || "";
+        const windowHours = latest.window_hours || "";
+        const status = latest.ai_status || latest.status || "";
+
+        timeEl.textContent = ts
+          ? `Summary generated: ${formatDateTimeDE(ts)}${windowHours ? ` using KIconnect • Data processed: last ${windowHours} hours` : ""}`
+          : (windowHours ? `window ${windowHours}h` : "—");
+
+        textEl.innerHTML = status
+          ? renderInlineBold(status)
+          : "<span class='small'>No status text found in the latest row.</span>";
+
+      } catch (e) {
+        timeEl.textContent = "—";
+        textEl.textContent = `Error loading status: ${e.message}`;
       }
     }
 
@@ -801,8 +897,6 @@ function quantile(sortedArr, q) {
         const eventsByLayer = detectLightEvents(objs, {
           days: 3,
           maxEventsPerType: 3,
-          offRatio: 0.5,  // OFF = -50%
-          onRatio: 1.8,   // ON  = +80%
         });
 
         if (eventsEl) eventsEl.innerHTML = renderLightEventsHTML(eventsByLayer);
@@ -814,7 +908,7 @@ function quantile(sortedArr, q) {
       }
     }
 
-    // Expand all / Collapse all button
+    // Expand all / Collapse all button (now inside layers card)
     document.getElementById("toggleAllBtn").addEventListener("click", () => {
       if (!window.__expandedLayers) window.__expandedLayers = new Set();
 
@@ -831,8 +925,12 @@ function quantile(sortedArr, q) {
       }
     });
 
-    loadOnce();
-    setInterval(loadOnce, REFRESH_MS);
+    async function refreshAll() {
+      await Promise.allSettled([ loadOnce(), loadStatusSheet() ]);
+    }
+
+    refreshAll();
+    setInterval(refreshAll, REFRESH_MS);
 
     window.addEventListener("resize", () => {
       if (window.__latest && window.__historyByLayer) {
