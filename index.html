@@ -13,7 +13,6 @@
       --muted:#6b7280;
       --shadow: 0 10px 30px rgba(0,0,0,.06);
 
-      /* subtle “card tint” hues */
       --tint-status: #f9fafb;
       --tint-layers: #f8fafc;
       --tint-events: #f9fafb;
@@ -54,7 +53,6 @@
     .small{ font-size: 12px; color: var(--muted); }
     .err{ color: #b00020; }
 
-    /* General card wrapper (for the inner cards) */
     .card{
       border: 1px solid var(--border);
       border-radius: 16px;
@@ -64,12 +62,10 @@
       margin-top: 14px;
     }
 
-    .card.pad { padding: 12px; overflow: visible; } /* if you want inner padding */
+    .card.pad { padding: 12px; overflow: visible; } 
     .card-tint-status{ background: var(--tint-status); }
     .card-tint-layers{ background: var(--tint-layers); }
     .card-tint-events{ background: var(--tint-events); }
-
-    /* mini header inside cards */
     .card-head{
       display:flex;
       justify-content:space-between;
@@ -87,7 +83,6 @@
       font-size: 14px;
     }
 
-    /* Expand all button (moved into layers card header) */
     .expand-all-btn{
       padding: 6px 12px;
       font-size: 12px;
@@ -289,7 +284,6 @@
         </div>
       </header>
 
-      <!-- NEW: Latest status card (from "status" sheet) -->
       <div class="card card-tint-status" id="statusCard">
         <div class="card-head">
           <div>
@@ -315,7 +309,6 @@
         <div class="cabinet" id="cabinet"></div>
       </div>
 
-      <!-- Events card (kept, but tinted and clearly separated) -->
       <div class="card card-tint-events events-card" id="eventsCard">
         <div class="card-head">
           <button type="button" class="events-toggle" id="eventsToggle" aria-expanded="false">
@@ -336,11 +329,8 @@
   </div>
 
   <script>
-    // Existing data sheet (gid=0)
     const DATA_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRRw7CacfMewqTsK6rZL4HDzgCjaIGFO1PgaiSClaNDofw9uI4ssa-I0nKuS79FmwWF-pYqkOYh1Wui/pub?gid=0&single=true&output=csv";
 
-    // NEW: status sheet (replace STATUS_GID with the gid of your "status" tab)
-    // Find it by opening the tab and looking at the URL: ...gid=123456789
     const STATUS_GID = "183875317";
     const STATUS_URL = `https://docs.google.com/spreadsheets/d/e/2PACX-1vRRw7CacfMewqTsK6rZL4HDzgCjaIGFO1PgaiSClaNDofw9uI4ssa-I0nKuS79FmwWF-pYqkOYh1Wui/pub?gid=${STATUS_GID}&single=true&output=csv`;
 
@@ -432,7 +422,6 @@
       return `${day}.${month}.${year} ${hours}:${minutes}`;
     }
 
-    // tiny markdown-ish bold support for **text**
     function renderInlineBold(md) {
       const s = String(md ?? "");
       // escape basic HTML
@@ -516,7 +505,7 @@
       ctx.textAlign = "right";
       ctx.fillText(formatTime24(xs[xs.length - 1]), padL + plotW, padT + plotH + 18);
 
-      // Axis labels
+      // axis labels
       ctx.fillStyle = "#555";
       ctx.font = "11px system-ui";
 
@@ -534,7 +523,7 @@
       ctx.textBaseline = "alphabetic";
       ctx.fillText("Time (24h)", padL + plotW / 2, height - 8);
 
-      // Data line
+      // data line
       ctx.strokeStyle = "#111";
       ctx.lineWidth = 2;
       ctx.beginPath();
@@ -617,7 +606,7 @@
       });
     })();
 
-    // Light event detection
+    // light on off event detection
     function movingAvg3(arr) {
       const out = new Array(arr.length).fill(null);
       for (let i = 0; i < arr.length; i++) {
